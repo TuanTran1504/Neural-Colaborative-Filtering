@@ -10,7 +10,9 @@ Collaborative Filtering is used widely across Recommendation Systems as it's cap
 
 In the paper, it is justified that Matrix Factorization (MF) can also be interpreted as a special case of their NCF framework. They have fused GMF and MLP under the NCF framework by letting the 2 model share the same embedding layer, and then combine the outputs of their interaction function
 Here is their proposed model and I will try to recreate that
-<img width="273" alt="image" src="https://github.com/user-attachments/assets/29b4c9c8-f1bd-4424-bc76-bd1dd1393460">
+
+
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/29b4c9c8-f1bd-4424-bc76-bd1dd1393460">
 
 
 Dataset:
@@ -28,7 +30,10 @@ information for updating parameters properly. As we initialize NeuMF with pre-tr
 Training and Validation:
 
 After applying all the element as in the paper, including a pretrained GMF and MLP with intial weights, I have achieved a performance like below
-<img width="343" alt="image" src="https://github.com/user-attachments/assets/d88f2c1e-18f7-49a0-9a59-89b94f673406">
+
+
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/d88f2c1e-18f7-49a0-9a59-89b94f673406">
+
 
 The model above is the result of serveral tuning of the optimizer, lr and scheduler. The optimal values, as in the graph, is weight_decay= 1e-4, lr=0.01, momentum=0.9. Parameter of scheduler iclude factor=0.3, patience=5. 
 Other layers or parameters of the model can be found in the code in this repo.
