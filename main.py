@@ -38,10 +38,10 @@ for name, param in model.named_parameters():
         fc_params.append(param)
 
 
-optimizer = optim.Adam([
+optimizer = optim.SGD([
     {"params": embedding_params, "weight_decay": 0.0},  # No regularization for embeddings
-    {"params": fc_params, "weight_decay": 1e-3}         # L2 regularization for fully connected layers
-], lr=0.001)
+    {"params": fc_params, "weight_decay": 1e-4}         # L2 regularization for fully connected layers
+], lr=0.01, momentum=0.9)
 # Define optimizer and loss function
 
 # loss_function = nn.SmoothL1Loss()

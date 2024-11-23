@@ -4,7 +4,7 @@ import torch.optim as optim
 from matplotlib import pyplot as plt
 from sklearn.metrics import mean_squared_error
 import numpy as np
-
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 class NeuralCollaborativeFiltering(nn.Module):
     def __init__(self, num_users, num_items, embedding_dim, hidden_dims, num_days=7):
@@ -23,7 +23,7 @@ class NeuralCollaborativeFiltering(nn.Module):
             layers.append(nn.Linear(input_dim, dim))
             layers.append(nn.BatchNorm1d(dim))
             layers.append(nn.ReLU())
-            layers.append(nn.Dropout(0.5))
+            layers.append(nn.Dropout(0.3))
             input_dim = dim
         self.mlp = nn.Sequential(*layers)
 
@@ -130,8 +130,12 @@ def test_model(model, train_loader, test_loader, optimizer, loss_function, epoch
     model.to(device)
     model.train()
 
+    # Initialize scheduler
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=5, verbose=True)
+
     rmse_history = []  # To store RMSE for each epoch
     loss_history = []  # To store average training loss for each epoch
+    # To store NDCG@k for each epoch
 
     for epoch in range(epochs):
         total_loss = 0
@@ -161,16 +165,22 @@ def test_model(model, train_loader, test_loader, optimizer, loss_function, epoch
         loss_history.append(avg_loss)
         print(f"Epoch [{epoch + 1}/{epochs}], Loss: {avg_loss:.4f}")
 
-        # Evaluate on the test set to calculate RMSE
-        rmse = evaluate_test_model(model, test_loader, device=device)
+        # Evaluate on the test set to calculate RMSE, HR@k, and NDCG@k
+        rmse= evaluate_test_model(model, test_loader, device=device)
         rmse_history.append(rmse)
+
+
         print(f"Test RMSE after Epoch {epoch + 1}: {rmse:.4f}")
 
-    # Plot RMSE and Loss over epochs
+        # Step the scheduler with RMSE as the monitored metric
+        scheduler.step(rmse)
+        current_lr = scheduler.get_last_lr()
+        print(f"Epoch {epoch + 1}: Learning Rate = {current_lr}")
+    # Plot RMSE, HR@k, NDCG@k, and Loss over epochs
     plt.figure(figsize=(12, 6))
 
     # Plot Training Loss
-    plt.subplot(1, 2, 1)
+    plt.subplot(1, 3, 1)
     plt.plot(range(1, epochs + 1), loss_history, marker='o', linestyle='-', color='r')
     plt.xlabel("Epoch")
     plt.ylabel("Training Loss")
@@ -178,13 +188,12 @@ def test_model(model, train_loader, test_loader, optimizer, loss_function, epoch
     plt.grid(True)
 
     # Plot RMSE
-    plt.subplot(1, 2, 2)
+    plt.subplot(1, 3, 2)
     plt.plot(range(1, epochs + 1), rmse_history, marker='o', linestyle='-', color='b')
     plt.xlabel("Epoch")
     plt.ylabel("Test RMSE")
     plt.title("Test RMSE Over Epochs")
     plt.grid(True)
-
     plt.tight_layout()
     plt.show()
 # Train the model
@@ -192,6 +201,8 @@ def evaluate_test_model(model, test_loader, device='cpu'):
     model.eval()
     model.to(device)
     all_preds, all_targets = [], []
+    num_users = 0
+
     with torch.no_grad():
         for batch in test_loader:
             user_ids = batch['user'].to(device)
@@ -200,46 +211,11 @@ def evaluate_test_model(model, test_loader, device='cpu'):
 
             # Forward pass
             predictions = model(user_ids, movie_ids).squeeze()
+
+            # Append predictions and targets for RMSE calculation
             all_preds.extend(predictions.cpu().numpy())
             all_targets.extend(ratings.cpu().numpy())
 
-    # Calculate RMSE
+    # Calculate metrics
     rmse = np.sqrt(mean_squared_error(all_targets, all_preds))
     return rmse
-# Training the model
-def train_model(model, train_loader, test_loader, optimizer, loss_function, epochs=10, device="cpu"):
-    model.to(device)
-    model.train()
-    rmse_history = []
-    for epoch in range(epochs):
-        if epoch == 0:
-            print(f'Training on {device}')
-            print("Training begin")
-        epoch_loss = 0
-        for batch in train_loader:
-            user = batch["user"].to(device)
-            movie = batch["movie"].to(device)
-            rating = batch["rating"].to(device)
-            timestamp = batch["timestamp"].to(device)
-            day_of_week = batch["dayofweek"].to(device)
-
-            optimizer.zero_grad()
-
-            predictions = model(user, movie, timestamp, day_of_week).squeeze()
-            loss = loss_function(predictions, rating)
-            loss.backward()
-            optimizer.step()
-            epoch_loss += loss.item()
-        print(f"Epoch {epoch + 1}/{epochs}, Loss: {epoch_loss / len(train_loader):.4f}")
-
-        rmse = evaluate_model(model, test_loader, device=device)
-        rmse_history.append(rmse)
-        print(f"Test RMSE after Epoch {epoch + 1}: {rmse:.4f}")
-    # Plot RMSE over epochs
-    plt.figure(figsize=(10, 6))
-    plt.plot(range(1, epochs + 1), rmse_history, marker='o', linestyle='-', color='b')
-    plt.xlabel("Epoch")
-    plt.ylabel("Test RMSE")
-    plt.title("RMSE Over Epochs")
-    plt.grid(True)
-    plt.show()
