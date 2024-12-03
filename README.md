@@ -35,6 +35,7 @@ After applying all the element as in the paper, including a pretrained GMF and M
 <img width="400" alt="image" src="https://github.com/user-attachments/assets/d88f2c1e-18f7-49a0-9a59-89b94f673406">
 
 
+This validation is not the final version as I am still working on improving the Precision, Recall and F1 score, so the result might be available in the future
 The model above is the result of serveral tuning of the optimizer, lr and scheduler. The optimal values, as in the graph, is weight_decay= 1e-4, lr=0.01, momentum=0.9. Parameter of scheduler iclude factor=0.3, patience=5. 
 Other layers or parameters of the model can be found in the code in this repo.
 
